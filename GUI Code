@@ -1,0 +1,180 @@
+import pandas as pd
+import tkinter as tk
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from tkinter import *
+from PIL import Image, ImageTk
+from tkinter import filedialog, messagebox
+
+
+def hitung_HRmax(usia):
+    return 220 - usia
+
+def hitung_persentase(BPM, HRmax):
+    return (BPM / HRmax) * 100
+
+def Intensity(persentase):
+    if 50 <= persentase < 60:
+        return 'Very Light'
+    elif 60 <= persentase < 70:
+        return 'Light'
+    elif 70 <= persentase < 80:
+        return 'Moderate'
+    elif 80 <= persentase < 90:
+        return 'Hard'
+    elif 90 <= persentase <= 100:
+        return 'Maximum'
+
+def load_and_process_data(nama_user, usia, file_path):
+    try:
+        df = pd.read_csv(file_path)
+        HRmax = hitung_HRmax(usia)
+        df = df[df['BPM'] <= HRmax]
+
+        df["%"] = round(df['BPM'].apply(lambda x: hitung_persentase(x, HRmax)), 2)
+        df["Intensity"] = df['%'].apply(Intensity)
+
+        nama_file_baru = f'{nama_user}_age_{usia}_{file_path.split("/")[-1]}'
+        df.to_csv(nama_file_baru, index=False)
+
+        return nama_file_baru
+    except Exception as e:
+        print(f"Terjadi kesalahan: {e}")
+        return None
+
+def load_data(file_path):
+    data = pd.read_csv(file_path)
+    return data
+
+def update_data_display(file_path, nama_user, usia):
+    data = load_data(file_path)
+    root = tk.Tk()
+    root.title("HEART RATE GUI KELOMPOK 6")
+    icon_path = convert_to_ico('C:\\Users\\User\\OneDrive\\Dokumen\\batman.png')
+    if icon_path:
+        root.iconbitmap(icon_path)
+    root.geometry('1920x1080')
+    root.configure(bg='black')
+
+    # Plot the data
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(data['Seconds'], data['BPM'], color='cyan', label='Heart Rate (BPM)')
+    ax.set_title('Heart Rate Over Time')
+    ax.set_xlabel('Seconds')
+    ax.set_ylabel('Heart Rate (BPM)')
+    ax.legend()
+
+    # Embed the plot in the Tkinter window
+    canvas = FigureCanvasTkAgg(fig, master=root)
+    canvas_widget = canvas.get_tk_widget()
+    canvas_widget.place(relx=0.5, rely=0.3, anchor='center')
+
+    upper_right_label = tk.Label(root, text=f'{nama_user},{usia} yo', font=('cascadia code', 20), bg='black', fg='#0af5e5')
+    upper_right_label.place(relx=1, rely=0.01, anchor='ne')
+
+    bpm_label = tk.Label(root, font=('cascadia code', 30, 'bold'), bg='black', fg='white')
+    bpm_label.place(relx=0.5, rely=0.63, anchor='center')
+
+    seconds_label = tk.Label(root, font=('cascadia code', 20), bg='black', fg='#0af5e5')
+    seconds_label.place(relx=0, rely=0, anchor='nw')
+
+    intensity_label = tk.Label(root, font=('cascadia code', 20), bg='black', fg='#0af5e5')
+    intensity_label.place(relx=1, rely=1, anchor='se')
+
+    percentage_label = tk.Label(root, font=('cascadia code', 20), bg='black', fg='#0af5e5')
+    percentage_label.place(relx=0, rely=1, anchor='sw')
+
+    def update_labels(idx):
+        if idx < len(data):
+            bpm_label.config(text=f"BPM: {data['BPM'][idx]}", padx=20, pady=20)
+            seconds_label.config(text=f"{data['Seconds'][idx]} Seconds", padx=10, pady=10)
+            intensity_label.config(text=f"{data['Intensity'][idx]}", padx=10, pady=10)
+            percentage_label.config(text=f"{data['%'][idx]}%", padx=10, pady=10)
+            idx += 1
+            root.after(1000, lambda: update_labels(idx))
+
+    update_labels(0)
+    root.mainloop()
+
+def animate_gif(frame, count):
+    bg_label.configure(image=frame)
+    root.after(20, lambda: animate_gif(gif_frames[(count + 1) % len(gif_frames)], (count + 1) % len(gif_frames)))
+
+def login():
+    entered_nama_user = nama_user_entry.get()
+    entered_usia = usia_entry.get()
+
+    try:
+        usia = int(entered_usia)
+    except ValueError:
+        messagebox.showerror(title="Error", message="Masukkan usia dalam bilangan bulat.")
+        return
+
+    file_path = filedialog.askopenfilename(title="Pilih File CSV", filetypes=[("CSV Files", "*.csv")])
+
+    if not file_path:
+        messagebox.showinfo(title="Info", message="File tidak dipilih.")
+        return
+
+    file_path = load_and_process_data(entered_nama_user, usia, file_path)
+    if file_path:
+        update_data_display(file_path, entered_nama_user, usia)
+    
+def convert_to_ico(image_path):
+    try:
+        img = Image.open(image_path)
+        img.save("icon.ico", format="ICO", sizes=[(32, 32)])
+        return "icon.ico"
+    except Exception as e:
+        print(f"Error converting image to .ico format: {e}")
+        return None
+
+# GUI untuk login
+root = tk.Tk()
+root.title("Input Data User")
+icon_path = convert_to_ico('C:\\Users\\User\\OneDrive\\Dokumen\\spidey.jpg')
+if icon_path:
+    root.iconbitmap(icon_path)
+root.geometry('500x500')
+
+# Load gif
+gif_path = r"C:\Users\User\OneDrive\Dokumen\Data excel baru\kode gui\gif.gif"
+gif_frames = []
+
+def load_gif(file):
+    gif = Image.open(file)
+    frames = []
+    try:
+        while True:
+            frames.append(ImageTk.PhotoImage(gif.copy()))
+            gif.seek(len(frames))
+    except EOFError:
+        pass
+    return frames
+
+gif_frames = load_gif(gif_path)
+
+# Initialize gif_label as background
+bg_label = tk.Label(root)
+bg_label.place(relwidth=1, relheight=1)
+
+# Start the gif animation
+animate_gif(gif_frames[0], 0)
+
+# Initialize login form components
+login_label = tk.Label(text="Login Form", bg="#000802", fg="#f50a0a", font=("bahnschrift semibold", 30))
+nama_user_label = tk.Label(root, text="Nama:", bg="#000802", fg="#FFFFFF", font=("bahnschrift semibold", 16))
+usia_label = tk.Label(root, text="Usia:", bg="#000802", fg="#FFFFFF", font=("bahnschrift semibold", 16))
+nama_user_entry = tk.Entry(root, font=("bahnschrift semibold", 16))
+usia_entry = tk.Entry(root, font=("bahnschrift semibold", 16))
+login_button = tk.Button(root, text="Login", bg="#f50a0a", fg="#FFFFFF", font=("bahnschrift semibold", 16), command=login)
+
+# Place login form components
+login_label.pack(pady=40)
+nama_user_label.pack(padx=10)
+nama_user_entry.pack(pady=20)
+usia_label.pack(padx=10)
+usia_entry.pack(pady=20)
+login_button.pack(pady=30)
+
+root.mainloop()
